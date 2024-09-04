@@ -1,0 +1,94 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@using System.Text
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+<section class="main-content-w3layouts-agileits">
+    <div class="container">
+        <h3 class="tittle">Oturum Aç</h3>
+        <div class="row inner-sec">
+            <div class="login p-5 bg-light mx-auto mw-100">
+                @if (isLoading)
+                {
+                    <p>Yükleniyor...</p>
+                }
+                else
+                {
+                    if (apiError)
+                    {
+                    <p class="text-danger">Giriş başarısız. Lütfen bilgilerinizi kontrol edin.</p>
+                    }
+                    else if (loginSuccess)
+                     {
+                         <p class="text-success"> Giriş Başarılı.</p>
+                     }
+                }
+                <form>
+                    <div class="form-group">
+                        <label for="email">Mail Adresi</label>
+                        <input type="email" class="form-control" id="email" @bind="email" required />
+                        <small id="emailHelp" class="form-text text-muted"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Şifre</label>
+                        <input type="password" class="form-control" id="password" @bind="password" required />
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                        <label class="form-check-label" for="exampleCheck1">Beni hatırla</label>
+                    </div>
+                    <button type="button" class="btn btn-primary submit mb-4" @onclick="HandleSubmit">Giriş Yap</button>
+                    <p><a href="#"> Bir hesabın yok mu?</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+@code {
+    private const string LoginUrl = "https://dehapi.com/api/login";
+    private string email = "";
+    private string password = "";
+    private bool isLoading = false;
+    private bool apiError = false;
+    private bool loginSuccess = false;
+
+    private async Task HandleSubmit()
+    {
+        isLoading = true;
+        apiError = false;
+        loginSuccess = false;
+        try
+        {
+            var loginData = new
+            {
+                email = this.email,
+                password = this.password
+            };
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(loginData), Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync(LoginUrl, content);
+            if (response.IsSuccessStatusCode)
+            {
+                loginSuccess = true;
+                await localStorage.SetItemAsync("isAuthenticated", true);
+                NavigationManager.NavigateTo("/users");
+            }
+            else
+            {
+                apiError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+
+            apiError = true;
+            Console.WriteLine($"Hata; {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

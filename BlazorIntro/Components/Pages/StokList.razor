@@ -1,0 +1,235 @@
+﻿@page "/stock"
+@inject HttpClient Http
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<h3>Ürünler</h3>
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (apiError)
+{
+    <p>Error: @errorMessage</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Adı</th>
+                <th>Stok</th>
+                <th>Fiyat</th>
+                <th>Detaylar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in displayedProducts)
+            {
+                <tr>
+                    <td>@item.id</td>
+                    <td>@item.name</td>
+                    <td>@item.stock</td>
+                    <td>@item.buy_price</td>
+                    <td><button class="btn btn-danger" @onclick="() => NavigateToDetail(item.slug)">Detay</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div>
+        <button class="btn btn-primary" @onclick="FirstPage" disabled="@(!CanGoBack)"> İlk Sayfa</button>
+        <button class="btn btn-primary" @onclick="PreviousPage" disabled="@(!CanGoBack)">Önceki</button>
+        @currentPage. Sayfa
+        <button class="btn btn-primary" @onclick="NextPage" disabled="@(!CanGoForward)">Sonraki</button>
+        <button class="btn btn-primary" @onclick="LastPage" disabled="@(!CanGoForward)">Son Sayfa</button>
+    </div>
+}
+@code
+{
+
+    private string GetStockListUrl(int page) => $"https://dehapi.com/api/seller/product/get?page={page}";
+    private const string ApiKey = "sami";
+    private const string ApiSecret = "sami";
+    private bool isLoading = true;
+    private bool apiError = false;
+    private string errorMessage = "";
+    private Root root;
+    private int currentPage = 1;
+    private const int itemsPerPage = 10;
+    private List<Datum> displayedProducts = new List<Datum>();
+
+    public class Datum
+    {
+        public int id { get; set; }
+        public object warranty_id { get; set; }
+        public int unit_id { get; set; }
+        public int brand_id { get; set; }
+        public string name { get; set; }
+        public string slug { get; set; }
+        public object barcode { get; set; }
+        public object stockcode { get; set; }
+        public string description { get; set; }
+        public int stock { get; set; }
+        public int active { get; set; }
+        public int discount { get; set; }
+        public int vat { get; set; }
+        public int is_deleted { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public string buy_price { get; set; }
+        public string vat_price { get; set; }
+        public int vat_included { get; set; }
+        public string sale_price { get; set; }
+        public string discount_price { get; set; }
+        public int currency_id { get; set; }
+        public string currency_name { get; set; }
+        public string currency_symbol { get; set; }
+        public List<object> get_variants { get; set; }
+        public object get_warrant { get; set; }
+        public GetUnit get_unit { get; set; }
+        public List<object> get_discounts { get; set; }
+        public List<object> get_variant_items { get; set; }
+    }
+
+    public class GetUnit
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string symbol { get; set; }
+        public int increase { get; set; }
+        public int type { get; set; }
+        public int multiplier { get; set; }
+        public int is_default { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class Link
+    {
+        public string url { get; set; }
+        public string label { get; set; }
+        public bool active { get; set; }
+    }
+
+    public class Products
+    {
+        public int current_page { get; set; }
+        public List<Datum> data { get; set; }
+        public string first_page_url { get; set; }
+        public int? from { get; set; }
+        public int last_page { get; set; }
+        public string last_page_url { get; set; }
+        public List<Link> links { get; set; }
+        public string next_page_url { get; set; }
+        public string path { get; set; }
+        public int per_page { get; set; }
+        public object prev_page_url { get; set; }
+        public int to { get; set; }
+        public int total { get; set; }
+    }
+
+    public class Root
+    {
+        public bool error { get; set; }
+        public string message { get; set; }
+        public Products products { get; set; }
+        public int TotalPages { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isAuthenticated = await localStorage.GetItemAsync<bool>("isAuthenticated");
+            if (!isAuthenticated)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            await LoadProducts();
+        }
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        apiError = false;
+
+        try
+        {
+
+            var response = await Http.GetAsync(GetStockListUrl(currentPage));
+
+            if (response.IsSuccessStatusCode)
+            {
+                root = await response.Content.ReadFromJsonAsync<Root>();
+                displayedProducts = root.products.data;
+            }
+            else
+            {
+                apiError = true;
+                errorMessage = $"Hata: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            apiError = true;
+            errorMessage = $"Hata: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+
+    private void NavigateToDetail(string slug)
+    {
+        NavigationManager.NavigateTo($"/stockdetail/{slug}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Http.DefaultRequestHeaders.Add("Dehasoft-Api-Key", ApiKey);
+        Http.DefaultRequestHeaders.Add("Dehasoft-Api-Secret", ApiSecret);
+        await LoadProducts();
+
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoForward)
+        {
+            currentPage++;
+            await LoadProducts();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (CanGoBack)
+        {
+            currentPage--;
+            await LoadProducts();
+        }
+
+    }
+    private async Task FirstPage()
+    {
+        currentPage = 1;
+        await LoadProducts();
+    }
+    private async Task LastPage()
+    {
+        currentPage = root.products.last_page;
+        await LoadProducts();
+    }
+
+    private bool CanGoBack => currentPage > 1;
+    private bool CanGoForward => currentPage < root.products.last_page;
+
+}
+

@@ -1,0 +1,325 @@
+﻿@page "/orderdetail/{orderId:int}"
+@rendermode InteractiveServer
+@inject HttpClient Http
+
+
+
+
+@if (isLoading)
+{
+    <p>Yükleniyor...</p>
+}
+else if (apiError)
+{
+    <p>Hata: @errorMessage</p>
+}
+else
+{
+    <div>
+        <h5><strong>Sipariş No: </strong>@order.oid</h5>
+        <p><strong>Müşteri:</strong> @order.get_user.name @order.get_user.surname</p>
+        <p><strong>Sipariş Tarihi:</strong> @order.created_at</p>
+    </div>
+
+    <table class="table table-bordered ">
+        <thead>
+            <tr>
+                <th>Ürün Adı</th>
+                <th>Fiyat</th>
+                <th>Miktar</th>
+                <th>KDV Dahil</th>
+                <th>Toplam</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in order.get_detail_items)
+            {
+                <tr>
+                    <td>@item.get_product.name</td>
+                    <td>@item.sale_price @order.get_currency.symbol</td>
+                    <td>@item.quantity</td>
+                    <td>@item.vat_price @order.get_currency.symbol</td>
+                    <td>@item.total @order.get_currency.symbol</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    
+    <div style="width:100%;display:flex;justify-content:flex-end">
+        <div style="width:240px;text-align:left;display:flex;flex-direction:column;align-items:start">
+            <p><strong>Toplam Ürün Sayısı:</strong> @order.get_detail_items.Count</p>
+            <p><strong>Sipariş Toplam Tutarı:</strong> @(order.total - order.cargo_price) @order.get_currency.symbol</p>
+            <p><strong>Kargo Ücreti:</strong> @order.cargo_price @order.get_currency.symbol</p>
+            <p style="margin:0"><strong>Vade Farkı:</strong> @order.interest_amount @order.get_currency.symbol</p>
+            <hr style="width:100%">
+            <p><strong>Genel Toplam:</strong> @order.total @order.get_currency.symbol</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int orderId { get; set; }
+
+    private const string ApiKey = "sami";
+    private const string ApiSecret = "sami";
+    private bool isLoading = true;
+    private bool apiError = false;
+    private string errorMessage = "";
+    private Root root;
+    private Order order = new Order();
+
+    public class GetCargo
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public int price { get; set; }
+        public int discount { get; set; }
+        public int free_shipping { get; set; }
+        public object extra { get; set; }
+        public int active { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetCurrency
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string code { get; set; }
+        public string symbol { get; set; }
+        public string buying { get; set; }
+        public string selling { get; set; }
+        public int is_default { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetDetailItem
+    {
+        public int id { get; set; }
+        public int order_id { get; set; }
+        public int user_id { get; set; }
+        public int product_id { get; set; }
+        public object variant_item_id { get; set; }
+        public int unit_id { get; set; }
+        public object campaign_id { get; set; }
+        public int quantity { get; set; }
+        public int vat { get; set; }
+        public int discount { get; set; }
+        public string buy_price { get; set; }
+        public string sale_price { get; set; }
+        public string vat_price { get; set; }
+        public string discount_price { get; set; }
+        public int vat_included { get; set; }
+        public double total { get; set; }
+        public int is_deleted { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public GetProduct get_product { get; set; }
+        public GetUnit get_unit { get; set; }
+    }
+
+    public class GetFirstImage
+    {
+        public int id { get; set; }
+        public int product_id { get; set; }
+        public object variant_item_id { get; set; }
+        public string path { get; set; }
+        public string url { get; set; }
+        public string alt { get; set; }
+        public string name { get; set; }
+        public string extension { get; set; }
+        public int is_main { get; set; }
+        public int is_active { get; set; }
+        public int rank { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetPaymentType
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public int active { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetProduct
+    {
+        public int id { get; set; }
+        public object warranty_id { get; set; }
+        public int unit_id { get; set; }
+        public int brand_id { get; set; }
+        public string name { get; set; }
+        public string slug { get; set; }
+        public object barcode { get; set; }
+        public object stockcode { get; set; }
+        public string description { get; set; }
+        public int stock { get; set; }
+        public int active { get; set; }
+        public object discount { get; set; }
+        public int vat { get; set; }
+        public int is_deleted { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public GetFirstImage get_first_image { get; set; }
+    }
+
+    public class GetStatus
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public string bg_color { get; set; }
+        public string text_color { get; set; }
+        public string slug { get; set; }
+        public int is_default { get; set; }
+        public int rank { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetUnit
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string symbol { get; set; }
+        public int increase { get; set; }
+        public int type { get; set; }
+        public int multiplier { get; set; }
+        public int is_default { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class GetUser
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string surname { get; set; }
+        public string email { get; set; }
+        public string code { get; set; }
+        public string ref_code { get; set; }
+        public string password { get; set; }
+        public object identity_number { get; set; }
+        public object date_of_birth { get; set; }
+        public string phone { get; set; }
+        public object gender { get; set; }
+        public object tax_office { get; set; }
+        public object tax_number { get; set; }
+        public object company { get; set; }
+        public object note { get; set; }
+        public int status_id { get; set; }
+        public object price_id { get; set; }
+        public int active { get; set; }
+        public int is_deleted { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class Order
+    {
+        public int id { get; set; }
+        public string oid { get; set; }
+        public int user_id { get; set; }
+        public object transfer_address_id { get; set; }
+        public object invoice_address_id { get; set; }
+        public object user_card_id { get; set; }
+        public string note { get; set; }
+        public int status_id { get; set; }
+        public int payment_type_id { get; set; }
+        public int currency_id { get; set; }
+        public int cargo_id { get; set; }
+        public int cargo_price { get; set; }
+        public object cargo_number { get; set; }
+        public object tracking { get; set; }
+        public int interest_amount { get; set; }
+        public double total { get; set; }
+        public double discount_total { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public List<Transaction> transactions { get; set; }
+        public GetUser get_user { get; set; }
+        public GetStatus get_status { get; set; }
+        public GetCurrency get_currency { get; set; }
+        public GetPaymentType get_payment_type { get; set; }
+        public object get_transfer_address { get; set; }
+        public object get_invoice_address { get; set; }
+        public List<GetDetailItem> get_detail_items { get; set; }
+        public List<object> get_coupons { get; set; }
+        public GetCargo get_cargo { get; set; }
+        public object get_payment { get; set; }
+        public double balance { get; set; }
+        public string balance_format { get; set; }
+    }
+
+    public class Root
+    {
+        public bool error { get; set; }
+        public string message { get; set; }
+        public Order order { get; set; }
+    }
+
+    public class Transaction
+    {
+        public int id { get; set; }
+        public int user_id { get; set; }
+        //public int payment_type { get; set; }
+        public int order_id { get; set; }
+        public int currency_id { get; set; }
+        public string debt { get; set; }
+        public string credit { get; set; }
+        public int received { get; set; }
+        public string note { get; set; }
+        public int is_deleted { get; set; }
+        public string due_date { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public double balance { get; set; }
+        public GetUser get_user { get; set; }
+        public GetCurrency get_currency { get; set; }
+        public GetPaymentType get_payment_type { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Http.DefaultRequestHeaders.Add("Dehasoft-Api-Key", ApiKey);
+            Http.DefaultRequestHeaders.Add("Dehasoft-Api-Secret", ApiSecret);
+            var response = await Http.GetAsync($"https://dehapi.com/api/seller/order/detail/{orderId}");
+            if (response.IsSuccessStatusCode)
+            {
+                root = await response.Content.ReadFromJsonAsync<Root>();
+                if (root != null && root.error == false)
+                {
+                    order = root.order;
+
+                }
+                else
+                {
+                    apiError = true;
+                    errorMessage = root?.message ?? "Sipariş Detayı getirilemedi";
+                }
+            }
+            else
+            {
+                apiError = true;
+                errorMessage = $"Hata:{response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            apiError = true;
+            errorMessage = $"Hata: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+}

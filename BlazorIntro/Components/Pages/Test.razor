@@ -1,0 +1,13 @@
+﻿@page "/test"
+@rendermode InteractiveServer
+
+<button type="button" @onclick="Deneme">Giriş Yap</button>
+
+@code
+{
+    private void Deneme()
+    {
+        Console.WriteLine("Butona tıklandı");
+        // await Task.CompletedTask;
+    }
+}

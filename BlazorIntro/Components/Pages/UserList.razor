@@ -1,0 +1,150 @@
+﻿@page "/users"
+@inject HttpClient Http
+<h4>Kullanıcı Listesi</h4>
+@if (apiError)
+    {
+        <p>Veriler Yüklenirken Hata Oluştu @errorMessage</p>                
+    }
+else if (root==null)
+    {
+        <p>Yükleniyor...</p>
+    }
+else
+    {
+<table class="table table-info">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Ad</th>
+            <th>Soyad</th>
+            <th>Mail</th>
+            <th>Statü</th>
+            <th>Tarih</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in root.users.data)
+        {
+            <tr>
+                <td>@item.id</td>
+                <td>@item.name</td>
+                <td>@item.surname</td>
+                <td>@item.email</td>
+                <td>@item.get_status.name</td>
+                <td>@item.created_at</td>
+            </tr>
+        }
+    </tbody>
+</table>
+    }
+
+@code {
+
+    private const string UserListUrl = "https://dehapi.com/api/seller/user/get";
+    private const string ApiKey = "sami";
+    private const string ApiSecret = "sami";
+    private bool isLoading = true;
+    private bool apiError = false;
+    private string errorMessage = "";
+    private Root root;
+
+    public class Datum
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string surname { get; set; }
+        public string email { get; set; }
+        public string code { get; set; }
+        public string ref_code { get; set; }
+        public string password { get; set; }
+        public object identity_number { get; set; }
+        public object date_of_birth { get; set; }
+        public string phone { get; set; }
+        public object gender { get; set; }
+        public object tax_office { get; set; }
+        public object tax_number { get; set; }
+        public object company { get; set; }
+        public object note { get; set; }
+        public int status_id { get; set; }
+        public int? price_id { get; set; }
+        public int active { get; set; }
+        public int is_deleted { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public GetStatus get_status { get; set; }
+        public object get_reference { get; set; }
+        public object get_default_address { get; set; }
+    }
+
+    public class GetStatus
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+    }
+
+    public class Link
+    {
+        public string url { get; set; }
+        public string label { get; set; }
+        public bool active { get; set; }
+    }
+
+    public class Root
+    {
+        public bool error { get; set; }
+        public Users users { get; set; }
+    }
+
+    public class Users
+    {
+        public int current_page { get; set; }
+        public List<Datum> data { get; set; }
+        public string first_page_url { get; set; }
+        public int from { get; set; }
+        public int last_page { get; set; }
+        public string last_page_url { get; set; }
+        public List<Link> links { get; set; }
+        public object next_page_url { get; set; }
+        public string path { get; set; }
+        public int per_page { get; set; }
+        public object prev_page_url { get; set; }
+        public int to { get; set; }
+        public int total { get; set; }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Http.DefaultRequestHeaders.Add("Dehasoft-Api-Key", ApiKey);
+            Http.DefaultRequestHeaders.Add("Dehasoft-Api-Secret", ApiSecret);
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(UserListUrl), System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync(UserListUrl, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                root = await response.Content.ReadFromJsonAsync<Root>();
+                Console.WriteLine("Kullanıcılar Başarıyla getirildi.");
+            }
+            else
+            {
+                apiError = true;
+                string errorMessage = await response.Content.ReadAsStringAsync();
+                Console.Write("Hata:", errorMessage);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            apiError = true;
+            Console.WriteLine($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
